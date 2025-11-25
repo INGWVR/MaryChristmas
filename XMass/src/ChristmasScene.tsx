@@ -2,21 +2,21 @@ import { useEffect, useRef } from "react";
 import "./ChristmasScene.css";
 
 // ===========================
-// Types & Interfaces
+// Типы и интерфейсы
 // ===========================
 
 interface Rabbit {
   side: "left" | "right";
   visible: boolean;
-  progress: number; // 0 to 1 for animation
+  progress: number; // От 0 до 1 для анимации
 }
 
 interface ChristmasSceneProps {
-  rabbitInterval?: number; // Interval in seconds (default: 30)
+  rabbitInterval?: number; // Интервал в секундах (по умолчанию: 30)
 }
 
 // ===========================
-// Constants
+// Константы
 // ===========================
 
 const CANVAS_HEIGHT = 180;
@@ -65,14 +65,14 @@ const COLORS = {
 
 const RABBIT = {
   scale: 2.5,
-  animationDuration: 3000, // ms
+  animationDuration: 3000, // мс
   peekDistance: 60,
   yPosition: 120,
   tiltAngle: 0.25,
 };
 
 // ===========================
-// Helper Functions
+// Вспомогательные функции
 // ===========================
 
 const createSnowWave = (
@@ -88,7 +88,7 @@ const createSnowWave = (
 };
 
 // ===========================
-// Drawing Functions
+// Функции рисования
 // ===========================
 
 const drawSnowLayer = (
@@ -96,7 +96,7 @@ const drawSnowLayer = (
   width: number,
   height: number
 ) => {
-  // Back layer
+  // Задний слой
   const backGradient = ctx.createLinearGradient(0, 92, 0, height);
   COLORS.snow.back.forEach((color, i) =>
     backGradient.addColorStop([0, 0.5, 1][i], color)
@@ -113,7 +113,7 @@ const drawSnowLayer = (
   ctx.closePath();
   ctx.fill();
 
-  // Middle layer
+  // Средний слой
   const middleGradient = ctx.createLinearGradient(0, 108, 0, height);
   COLORS.snow.middle.forEach((color, i) =>
     middleGradient.addColorStop([0, 0.5, 1][i], color)
@@ -129,7 +129,7 @@ const drawSnowLayer = (
   ctx.closePath();
   ctx.fill();
 
-  // Front layer
+  // Передний слой
   const frontGradient = ctx.createLinearGradient(0, 124, 0, height);
   COLORS.snow.front.forEach((color, i) =>
     frontGradient.addColorStop([0, 0.5, 1][i], color)
@@ -145,7 +145,7 @@ const drawSnowLayer = (
   ctx.closePath();
   ctx.fill();
 
-  // Highlights
+  // Блики
   ctx.fillStyle = COLORS.snow.highlight;
   ctx.beginPath();
   ctx.moveTo(0, height);
@@ -156,7 +156,7 @@ const drawSnowLayer = (
   ctx.closePath();
   ctx.fill();
 
-  // Sparkles
+  // Блёстки
   ctx.fillStyle = COLORS.snow.sparkle;
   for (let i = 0; i < 20; i++) {
     ctx.beginPath();
@@ -201,7 +201,7 @@ const drawStar = (
   ctx.closePath();
   ctx.fill();
 
-  // Bright center
+  // Яркий центр
   ctx.fillStyle = COLORS.star.center;
   ctx.beginPath();
   ctx.arc(x, y, innerRadius / 2, 0, Math.PI * 2);
@@ -216,19 +216,19 @@ const drawGazpromOrnament = (
   y: number,
   radius: number
 ) => {
-  // Main circle
+  // Основной круг
   ctx.fillStyle = COLORS.ornament.gazprom.blue;
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.fill();
 
-  // Highlight
+  // Блик
   ctx.fillStyle = COLORS.ornament.gazprom.highlight;
   ctx.beginPath();
   ctx.arc(x - radius / 3, y - radius / 3, radius / 3, 0, Math.PI * 2);
   ctx.fill();
 
-  // Flame
+  // Пламя
   ctx.fillStyle = COLORS.ornament.gazprom.flame;
   ctx.beginPath();
   ctx.moveTo(x, y - radius / 2);
@@ -250,7 +250,7 @@ const drawGazpromOrnament = (
   );
   ctx.fill();
 
-  // Hanger
+  // Подвес
   ctx.strokeStyle = COLORS.ornament.hanger;
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -266,7 +266,7 @@ const drawTraditionalOrnament = (
   radius: number,
   color: string
 ) => {
-  // Main ball with gradient
+  // Основной шар с градиентом
   const gradient = ctx.createRadialGradient(
     x - radius / 3,
     y - radius / 3,
@@ -284,7 +284,7 @@ const drawTraditionalOrnament = (
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.fill();
 
-  // Hanger
+  // Подвес
   ctx.strokeStyle = COLORS.ornament.hanger;
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -297,11 +297,11 @@ const drawChristmasTree = (ctx: CanvasRenderingContext2D) => {
   const treeX = TREE_X;
   const treeBaseY = TREE_BASE_Y;
 
-  // Trunk
+  // Ствол
   ctx.fillStyle = COLORS.tree.trunk;
   ctx.fillRect(treeX - 8, treeBaseY - 12, 16, 16);
 
-  // Tree layers
+  // Слои дерева
   const layers = [
     { yOffset: -32, width: 40, color: COLORS.tree.layers[0] },
     { yOffset: -52, width: 34, color: COLORS.tree.layers[1] },
@@ -319,7 +319,7 @@ const drawChristmasTree = (ctx: CanvasRenderingContext2D) => {
     ctx.fill();
   });
 
-  // Ornaments - Gazprom-neft logos
+  // Игрушки - логотипы Газпром-нефть
   const gazpromPositions = [
     [0, -85],
     [0, -34],
@@ -334,7 +334,7 @@ const drawChristmasTree = (ctx: CanvasRenderingContext2D) => {
     drawGazpromOrnament(ctx, treeX + dx, treeBaseY + dy, 5);
   });
 
-  // Traditional white ornaments
+  // Традиционные белые игрушки
   const whitePositions = [
     [8, -74],
     [-8, -74],
@@ -354,7 +354,7 @@ const drawChristmasTree = (ctx: CanvasRenderingContext2D) => {
     );
   });
 
-  // Star on top
+  // Звезда на вершине
   drawStar(ctx, treeX, treeBaseY - 104, 10, 5);
 };
 
@@ -380,19 +380,19 @@ const drawRabbit = (
   const x = 0;
   const y = 0;
 
-  // Head
+  // Голова
   ctx.fillStyle = COLORS.rabbit.fur;
   ctx.beginPath();
   ctx.arc(x, y, 10 * scale, 0, Math.PI * 2);
   ctx.fill();
 
-  // Head shading
+  // Затенение головы
   ctx.fillStyle = COLORS.rabbit.shading;
   ctx.beginPath();
   ctx.arc(x + 2 * scale, y + 2 * scale, 6 * scale, 0, Math.PI * 2);
   ctx.fill();
 
-  // Ears
+  // Уши
   ctx.fillStyle = COLORS.rabbit.fur;
   [
     [-5, -10, -0.3],
@@ -411,7 +411,7 @@ const drawRabbit = (
     ctx.fill();
   });
 
-  // Inner ears (pink)
+  // Внутренняя часть ушей (розовая)
   ctx.fillStyle = COLORS.rabbit.pink;
   [
     [-5, -10, -0.3],
@@ -430,7 +430,7 @@ const drawRabbit = (
     ctx.fill();
   });
 
-  // Eyes
+  // Глаза
   ctx.fillStyle = COLORS.rabbit.eyes;
   [
     [-3, -2],
@@ -441,7 +441,7 @@ const drawRabbit = (
     ctx.fill();
   });
 
-  // Eye highlights
+  // Блики в глазах
   ctx.fillStyle = COLORS.rabbit.fur;
   [
     [-2.5, -2.5],
@@ -452,7 +452,7 @@ const drawRabbit = (
     ctx.fill();
   });
 
-  // Nose
+  // Нос
   ctx.fillStyle = COLORS.rabbit.pink;
   ctx.beginPath();
   ctx.moveTo(x, y + 2 * scale);
@@ -461,14 +461,14 @@ const drawRabbit = (
   ctx.closePath();
   ctx.fill();
 
-  // Mouth
+  // Рот
   ctx.strokeStyle = "#888888";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(x, y + 2 * scale, 3 * scale, 0.2, Math.PI - 0.2);
   ctx.stroke();
 
-  // Whiskers
+  // Усы
   ctx.strokeStyle = COLORS.rabbit.whiskers;
   ctx.lineWidth = 1.5;
 
@@ -488,7 +488,7 @@ const drawRabbit = (
   });
   ctx.stroke();
 
-  // Cheek blush
+  // Румянец на щеках
   ctx.fillStyle = COLORS.rabbit.blush;
   [
     [-8, 4],
@@ -511,7 +511,7 @@ const drawRabbit = (
 };
 
 // ===========================
-// Main Component
+// Основной компонент
 // ===========================
 
 const ChristmasScene: React.FC<ChristmasSceneProps> = ({
@@ -532,7 +532,7 @@ const ChristmasScene: React.FC<ChristmasSceneProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Setup
+    // Настройка
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = CANVAS_HEIGHT;
@@ -541,7 +541,7 @@ const ChristmasScene: React.FC<ChristmasSceneProps> = ({
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
-    // Animation logic
+    // Логика анимации
     const updateRabbit = (currentTime: number) => {
       const rabbit = rabbitRef.current;
       const intervalMs = rabbitInterval * 1000;
@@ -575,7 +575,7 @@ const ChristmasScene: React.FC<ChristmasSceneProps> = ({
       }
     };
 
-    // Main animation loop
+    // Основной цикл анимации
     let animationId: number;
     const animate = (currentTime: number) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
