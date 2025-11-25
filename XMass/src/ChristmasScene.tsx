@@ -116,6 +116,11 @@ const STAR_PULSE = {
   speed: 0.002,
 };
 
+const TREE_SWAY = {
+  amplitude: 2, // Амплитуда покачивания в пикселях
+  speed: 0.001, // Скорость покачивания
+};
+
 // ===========================
 // Вспомогательные функции
 // ===========================
@@ -455,29 +460,51 @@ const darkenColor = (color: string, amount: number): string => {
 const drawChristmasTree = (
   ctx: CanvasRenderingContext2D,
   mousePos: MousePosition | null,
-  ornamentPositions: OrnamentPosition[]
+  ornamentPositions: OrnamentPosition[],
+  swayOffset: number = 0
 ) => {
   const treeX = TREE_X;
   const treeBaseY = TREE_BASE_Y;
 
-  // Ствол
+  // Ствол (не покачивается)
   ctx.fillStyle = COLORS.tree.trunk;
   ctx.fillRect(treeX - 8, treeBaseY - 12, 16, 16);
 
-  // Слои дерева
+  // Слои дерева с покачиванием
   const layers = [
-    { yOffset: -32, width: 40, color: COLORS.tree.layers[0] },
-    { yOffset: -52, width: 34, color: COLORS.tree.layers[1] },
-    { yOffset: -74, width: 27, color: COLORS.tree.layers[2] },
-    { yOffset: -96, width: 18, color: COLORS.tree.layers[3] },
+    {
+      yOffset: -32,
+      width: 40,
+      color: COLORS.tree.layers[0],
+      swayMultiplier: 0.3,
+    },
+    {
+      yOffset: -52,
+      width: 34,
+      color: COLORS.tree.layers[1],
+      swayMultiplier: 0.5,
+    },
+    {
+      yOffset: -74,
+      width: 27,
+      color: COLORS.tree.layers[2],
+      swayMultiplier: 0.7,
+    },
+    {
+      yOffset: -96,
+      width: 18,
+      color: COLORS.tree.layers[3],
+      swayMultiplier: 1.0,
+    },
   ];
 
-  layers.forEach(({ yOffset, width, color }) => {
+  layers.forEach(({ yOffset, width, color, swayMultiplier }) => {
+    const layerSwayOffset = swayOffset * swayMultiplier;
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.moveTo(treeX, treeBaseY + yOffset);
-    ctx.lineTo(treeX - width, treeBaseY + yOffset + 24);
-    ctx.lineTo(treeX + width, treeBaseY + yOffset + 24);
+    ctx.moveTo(treeX + layerSwayOffset, treeBaseY + yOffset);
+    ctx.lineTo(treeX - width + layerSwayOffset, treeBaseY + yOffset + 24);
+    ctx.lineTo(treeX + width + layerSwayOffset, treeBaseY + yOffset + 24);
     ctx.closePath();
     ctx.fill();
   });
@@ -494,6 +521,11 @@ const drawChristmasTree = (
     [28, -20],
   ];
   gazpromPositions.forEach(([dx, dy], index) => {
+    // Вычисляем покачивание для каждой игрушки в зависимости от высоты
+    const layerIndex = dy < -80 ? 3 : dy < -60 ? 2 : dy < -40 ? 1 : 0;
+    const swayMultiplier = [0.3, 0.5, 0.7, 1.0][layerIndex];
+    const ornamentSwayOffset = swayOffset * swayMultiplier;
+
     const ornament = ornamentPositions.find(
       (o) =>
         o.isGazprom &&
@@ -504,12 +536,18 @@ const drawChristmasTree = (
       ? isMouseOverOrnament(
           mousePos.x,
           mousePos.y,
-          treeX + dx,
+          treeX + dx + ornamentSwayOffset,
           treeBaseY + dy,
           5
         )
       : false;
-    drawGazpromOrnament(ctx, treeX + dx, treeBaseY + dy, 5, isHovered);
+    drawGazpromOrnament(
+      ctx,
+      treeX + dx + ornamentSwayOffset,
+      treeBaseY + dy,
+      5,
+      isHovered
+    );
   });
 
   // Традиционные белые игрушки
@@ -523,18 +561,23 @@ const drawChristmasTree = (
     [0, -17],
   ];
   whitePositions.forEach(([dx, dy]) => {
+    // Вычисляем покачивание для каждой игрушки в зависимости от высоты
+    const layerIndex = dy < -60 ? 2 : dy < -40 ? 1 : 0;
+    const swayMultiplier = [0.3, 0.5, 0.7][layerIndex];
+    const ornamentSwayOffset = swayOffset * swayMultiplier;
+
     const isHovered = mousePos
       ? isMouseOverOrnament(
           mousePos.x,
           mousePos.y,
-          treeX + dx,
+          treeX + dx + ornamentSwayOffset,
           treeBaseY + dy,
           4
         )
       : false;
     drawTraditionalOrnament(
       ctx,
-      treeX + dx,
+      treeX + dx + ornamentSwayOffset,
       treeBaseY + dy,
       4,
       COLORS.ornament.traditional,
@@ -713,6 +756,7 @@ const ChristmasScene: React.FC<ChristmasSceneProps> = ({
   const offscreenCanvasRef = useRef<OffscreenCanvas | null>(null);
   const ornamentPositionsRef = useRef<OrnamentPosition[]>([]);
   const starPulseRef = useRef<number>(0);
+  const treeSwayRef = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -882,14 +926,20 @@ const ChristmasScene: React.FC<ChristmasSceneProps> = ({
         );
       });
 
-      // Рисуем елку с hover эффектами
+      // Анимация покачивания веток
+      treeSwayRef.current += TREE_SWAY.speed;
+      const swayOffset =
+        Math.sin(treeSwayRef.current * Math.PI * 2) * TREE_SWAY.amplitude;
+
+      // Рисуем елку с hover эффектами и покачиванием
       drawChristmasTree(
         ctx,
         mousePositionRef.current,
-        ornamentPositionsRef.current
+        ornamentPositionsRef.current,
+        swayOffset
       );
 
-      // Анимация пульсации звезды
+      // Анимация пульсации звезды (с учетом покачивания)
       starPulseRef.current += STAR_PULSE.speed;
       const pulseScale =
         STAR_PULSE.minScale +
@@ -897,7 +947,7 @@ const ChristmasScene: React.FC<ChristmasSceneProps> = ({
           (Math.sin(starPulseRef.current * Math.PI * 2) + 1)) /
           2;
 
-      drawStar(ctx, TREE_X, TREE_BASE_Y - 104, 10, 5, pulseScale);
+      drawStar(ctx, TREE_X + swayOffset, TREE_BASE_Y - 104, 10, 5, pulseScale);
 
       updateRabbit(currentTime);
 
