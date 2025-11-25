@@ -15,6 +15,18 @@ interface ChristmasSceneProps {
   rabbitInterval?: number; // Интервал в секундах (по умолчанию: 30)
 }
 
+interface MousePosition {
+  x: number;
+  y: number;
+}
+
+interface OrnamentPosition {
+  x: number;
+  y: number;
+  radius: number;
+  isGazprom: boolean;
+}
+
 // ===========================
 // Константы
 // ===========================
@@ -71,6 +83,39 @@ const RABBIT = {
   tiltAngle: 0.25,
 };
 
+const GIFTS = [
+  {
+    x: 50,
+    y: 135,
+    width: 20,
+    height: 18,
+    color: "#E74C3C",
+    ribbonColor: "#F1C40F",
+  },
+  {
+    x: 90,
+    y: 140,
+    width: 16,
+    height: 14,
+    color: "#3498DB",
+    ribbonColor: "#ECF0F1",
+  },
+  {
+    x: 70,
+    y: 142,
+    width: 14,
+    height: 12,
+    color: "#2ECC71",
+    ribbonColor: "#E74C3C",
+  },
+];
+
+const STAR_PULSE = {
+  minScale: 0.9,
+  maxScale: 1.1,
+  speed: 0.002,
+};
+
 // ===========================
 // Вспомогательные функции
 // ===========================
@@ -91,8 +136,21 @@ const createSnowWave = (
 // Функции рисования
 // ===========================
 
+const isMouseOverOrnament = (
+  mouseX: number,
+  mouseY: number,
+  ornamentX: number,
+  ornamentY: number,
+  radius: number
+): boolean => {
+  const distance = Math.sqrt(
+    Math.pow(mouseX - ornamentX, 2) + Math.pow(mouseY - ornamentY, 2)
+  );
+  return distance <= radius + 5;
+};
+
 const drawSnowLayer = (
-  ctx: CanvasRenderingContext2D,
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   width: number,
   height: number
 ) => {
@@ -170,11 +228,15 @@ const drawStar = (
   x: number,
   y: number,
   outerRadius: number,
-  innerRadius: number
+  innerRadius: number,
+  pulseScale: number = 1
 ) => {
   ctx.save();
   ctx.shadowColor = COLORS.star.glow;
-  ctx.shadowBlur = 20;
+  ctx.shadowBlur = 20 * pulseScale;
+
+  const scaledOuter = outerRadius * pulseScale;
+  const scaledInner = innerRadius * pulseScale;
 
   ctx.fillStyle = COLORS.star.main;
   ctx.beginPath();
@@ -184,18 +246,18 @@ const drawStar = (
 
     if (i === 0) {
       ctx.moveTo(
-        x + Math.cos(outerAngle) * outerRadius,
-        y + Math.sin(outerAngle) * outerRadius
+        x + Math.cos(outerAngle) * scaledOuter,
+        y + Math.sin(outerAngle) * scaledOuter
       );
     } else {
       ctx.lineTo(
-        x + Math.cos(outerAngle) * outerRadius,
-        y + Math.sin(outerAngle) * outerRadius
+        x + Math.cos(outerAngle) * scaledOuter,
+        y + Math.sin(outerAngle) * scaledOuter
       );
     }
     ctx.lineTo(
-      x + Math.cos(innerAngle) * innerRadius,
-      y + Math.sin(innerAngle) * innerRadius
+      x + Math.cos(innerAngle) * scaledInner,
+      y + Math.sin(innerAngle) * scaledInner
     );
   }
   ctx.closePath();
@@ -204,7 +266,7 @@ const drawStar = (
   // Яркий центр
   ctx.fillStyle = COLORS.star.center;
   ctx.beginPath();
-  ctx.arc(x, y, innerRadius / 2, 0, Math.PI * 2);
+  ctx.arc(x, y, scaledInner / 2, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -214,48 +276,67 @@ const drawGazpromOrnament = (
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  radius: number
+  radius: number,
+  isHovered: boolean = false
 ) => {
+  const effectiveRadius = isHovered ? radius * 1.2 : radius;
+
+  if (isHovered) {
+    ctx.save();
+    ctx.shadowColor = "#FFD700";
+    ctx.shadowBlur = 15;
+  }
+
   // Основной круг
   ctx.fillStyle = COLORS.ornament.gazprom.blue;
   ctx.beginPath();
-  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.arc(x, y, effectiveRadius, 0, Math.PI * 2);
   ctx.fill();
 
   // Блик
   ctx.fillStyle = COLORS.ornament.gazprom.highlight;
   ctx.beginPath();
-  ctx.arc(x - radius / 3, y - radius / 3, radius / 3, 0, Math.PI * 2);
+  ctx.arc(
+    x - effectiveRadius / 3,
+    y - effectiveRadius / 3,
+    effectiveRadius / 3,
+    0,
+    Math.PI * 2
+  );
   ctx.fill();
 
   // Пламя
   ctx.fillStyle = COLORS.ornament.gazprom.flame;
   ctx.beginPath();
-  ctx.moveTo(x, y - radius / 2);
+  ctx.moveTo(x, y - effectiveRadius / 2);
   ctx.bezierCurveTo(
-    x + radius / 3,
-    y - radius / 4,
-    x + radius / 3,
-    y + radius / 4,
+    x + effectiveRadius / 3,
+    y - effectiveRadius / 4,
+    x + effectiveRadius / 3,
+    y + effectiveRadius / 4,
     x,
-    y + radius / 2
+    y + effectiveRadius / 2
   );
   ctx.bezierCurveTo(
-    x - radius / 3,
-    y + radius / 4,
-    x - radius / 3,
-    y - radius / 4,
+    x - effectiveRadius / 3,
+    y + effectiveRadius / 4,
+    x - effectiveRadius / 3,
+    y - effectiveRadius / 4,
     x,
-    y - radius / 2
+    y - effectiveRadius / 2
   );
   ctx.fill();
+
+  if (isHovered) {
+    ctx.restore();
+  }
 
   // Подвес
   ctx.strokeStyle = COLORS.ornament.hanger;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(x, y - radius);
-  ctx.lineTo(x, y - radius - 3);
+  ctx.moveTo(x, y - effectiveRadius);
+  ctx.lineTo(x, y - effectiveRadius - 3);
   ctx.stroke();
 };
 
@@ -264,16 +345,25 @@ const drawTraditionalOrnament = (
   x: number,
   y: number,
   radius: number,
-  color: string
+  color: string,
+  isHovered: boolean = false
 ) => {
+  const effectiveRadius = isHovered ? radius * 1.2 : radius;
+
+  if (isHovered) {
+    ctx.save();
+    ctx.shadowColor = "#FFD700";
+    ctx.shadowBlur = 15;
+  }
+
   // Основной шар с градиентом
   const gradient = ctx.createRadialGradient(
-    x - radius / 3,
-    y - radius / 3,
+    x - effectiveRadius / 3,
+    y - effectiveRadius / 3,
     0,
     x,
     y,
-    radius
+    effectiveRadius
   );
   gradient.addColorStop(0, "rgba(255, 255, 255, 0.8)");
   gradient.addColorStop(0.3, color);
@@ -281,19 +371,92 @@ const drawTraditionalOrnament = (
 
   ctx.fillStyle = gradient;
   ctx.beginPath();
-  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.arc(x, y, effectiveRadius, 0, Math.PI * 2);
   ctx.fill();
+
+  if (isHovered) {
+    ctx.restore();
+  }
 
   // Подвес
   ctx.strokeStyle = COLORS.ornament.hanger;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(x, y - radius);
-  ctx.lineTo(x, y - radius - 3);
+  ctx.moveTo(x, y - effectiveRadius);
+  ctx.lineTo(x, y - effectiveRadius - 3);
   ctx.stroke();
 };
 
-const drawChristmasTree = (ctx: CanvasRenderingContext2D) => {
+const drawGift = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  boxColor: string,
+  ribbonColor: string
+) => {
+  // Основная коробка
+  const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
+  gradient.addColorStop(0, boxColor);
+  gradient.addColorStop(1, darkenColor(boxColor, 0.3));
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(x, y, width, height);
+
+  // Тень коробки
+  ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+  ctx.fillRect(x + 2, y + 2, width, height);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(x, y, width, height);
+
+  // Вертикальная лента
+  ctx.fillStyle = ribbonColor;
+  ctx.fillRect(x + width / 2 - 2, y, 4, height);
+
+  // Горизонтальная лента
+  ctx.fillRect(x, y + height / 2 - 2, width, 4);
+
+  // Бант
+  const bowCenterX = x + width / 2;
+  const bowCenterY = y + height / 2;
+
+  ctx.fillStyle = ribbonColor;
+
+  // Левая петля банта
+  ctx.beginPath();
+  ctx.ellipse(bowCenterX - 4, bowCenterY, 5, 3, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Правая петля банта
+  ctx.beginPath();
+  ctx.ellipse(bowCenterX + 4, bowCenterY, 5, 3, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Центр банта
+  ctx.beginPath();
+  ctx.arc(bowCenterX, bowCenterY, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Блик на коробке
+  ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+  ctx.fillRect(x + 2, y + 2, width / 3, height / 3);
+};
+
+const darkenColor = (color: string, amount: number): string => {
+  // Простая функция затемнения цвета
+  const num = parseInt(color.replace("#", ""), 16);
+  const r = Math.max(0, (num >> 16) - amount * 255);
+  const g = Math.max(0, ((num >> 8) & 0x00ff) - amount * 255);
+  const b = Math.max(0, (num & 0x0000ff) - amount * 255);
+  return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
+};
+
+const drawChristmasTree = (
+  ctx: CanvasRenderingContext2D,
+  mousePos: MousePosition | null,
+  ornamentPositions: OrnamentPosition[]
+) => {
   const treeX = TREE_X;
   const treeBaseY = TREE_BASE_Y;
 
@@ -330,8 +493,23 @@ const drawChristmasTree = (ctx: CanvasRenderingContext2D) => {
     [-30, -20],
     [28, -20],
   ];
-  gazpromPositions.forEach(([dx, dy]) => {
-    drawGazpromOrnament(ctx, treeX + dx, treeBaseY + dy, 5);
+  gazpromPositions.forEach(([dx, dy], index) => {
+    const ornament = ornamentPositions.find(
+      (o) =>
+        o.isGazprom &&
+        Math.abs(o.x - (treeX + dx)) < 1 &&
+        Math.abs(o.y - (treeBaseY + dy)) < 1
+    );
+    const isHovered = mousePos
+      ? isMouseOverOrnament(
+          mousePos.x,
+          mousePos.y,
+          treeX + dx,
+          treeBaseY + dy,
+          5
+        )
+      : false;
+    drawGazpromOrnament(ctx, treeX + dx, treeBaseY + dy, 5, isHovered);
   });
 
   // Традиционные белые игрушки
@@ -345,17 +523,24 @@ const drawChristmasTree = (ctx: CanvasRenderingContext2D) => {
     [0, -17],
   ];
   whitePositions.forEach(([dx, dy]) => {
+    const isHovered = mousePos
+      ? isMouseOverOrnament(
+          mousePos.x,
+          mousePos.y,
+          treeX + dx,
+          treeBaseY + dy,
+          4
+        )
+      : false;
     drawTraditionalOrnament(
       ctx,
       treeX + dx,
       treeBaseY + dy,
       4,
-      COLORS.ornament.traditional
+      COLORS.ornament.traditional,
+      isHovered
     );
   });
-
-  // Звезда на вершине
-  drawStar(ctx, treeX, treeBaseY - 104, 10, 5);
 };
 
 const drawRabbit = (
@@ -524,6 +709,10 @@ const ChristmasScene: React.FC<ChristmasSceneProps> = ({
     progress: 0,
   });
   const lastRabbitTimeRef = useRef<number>(0);
+  const mousePositionRef = useRef<MousePosition | null>(null);
+  const offscreenCanvasRef = useRef<OffscreenCanvas | null>(null);
+  const ornamentPositionsRef = useRef<OrnamentPosition[]>([]);
+  const starPulseRef = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -532,10 +721,102 @@ const ChristmasScene: React.FC<ChristmasSceneProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Инициализация позиций игрушек для hover эффекта
+    const initOrnamentPositions = () => {
+      const treeX = TREE_X;
+      const treeBaseY = TREE_BASE_Y;
+      const positions: OrnamentPosition[] = [];
+
+      // Газпром игрушки
+      [
+        [0, -85],
+        [0, -34],
+        [-14, -64],
+        [14, -64],
+        [-22, -42],
+        [22, -42],
+        [-30, -20],
+        [28, -20],
+      ].forEach(([dx, dy]) => {
+        positions.push({
+          x: treeX + dx,
+          y: treeBaseY + dy,
+          radius: 5,
+          isGazprom: true,
+        });
+      });
+
+      // Белые игрушки
+      [
+        [8, -74],
+        [-8, -74],
+        [8, -50],
+        [-8, -50],
+        [14, -28],
+        [-14, -28],
+        [0, -17],
+      ].forEach(([dx, dy]) => {
+        positions.push({
+          x: treeX + dx,
+          y: treeBaseY + dy,
+          radius: 4,
+          isGazprom: false,
+        });
+      });
+
+      ornamentPositionsRef.current = positions;
+    };
+
+    initOrnamentPositions();
+
+    // Обработчик движения мыши
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      mousePositionRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+      canvas.style.cursor = ornamentPositionsRef.current.some((ornament) =>
+        isMouseOverOrnament(
+          mousePositionRef.current!.x,
+          mousePositionRef.current!.y,
+          ornament.x,
+          ornament.y,
+          ornament.radius
+        )
+      )
+        ? "pointer"
+        : "default";
+    };
+
+    const handleMouseLeave = () => {
+      mousePositionRef.current = null;
+      canvas.style.cursor = "default";
+    };
+
+    canvas.addEventListener("mousemove", handleMouseMove);
+    canvas.addEventListener("mouseleave", handleMouseLeave);
+
+    // Создание OffscreenCanvas для статичных элементов (снег)
+    let needsRedrawStatic = true;
+
     // Настройка
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = CANVAS_HEIGHT;
+
+      if (typeof OffscreenCanvas !== "undefined") {
+        offscreenCanvasRef.current = new OffscreenCanvas(
+          canvas.width,
+          canvas.height
+        );
+        const offscreenCtx = offscreenCanvasRef.current.getContext("2d");
+        if (offscreenCtx) {
+          drawSnowLayer(offscreenCtx, canvas.width, canvas.height);
+        }
+      }
+      needsRedrawStatic = true;
+      initOrnamentPositions();
     };
 
     resizeCanvas();
@@ -580,8 +861,44 @@ const ChristmasScene: React.FC<ChristmasSceneProps> = ({
     const animate = (currentTime: number) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      drawSnowLayer(ctx, canvas.width, canvas.height);
-      drawChristmasTree(ctx);
+      // Рисуем снег из OffscreenCanvas или напрямую
+      if (offscreenCanvasRef.current && !needsRedrawStatic) {
+        ctx.drawImage(offscreenCanvasRef.current, 0, 0);
+      } else {
+        drawSnowLayer(ctx, canvas.width, canvas.height);
+        needsRedrawStatic = false;
+      }
+
+      // Рисуем подарки
+      GIFTS.forEach((gift) => {
+        drawGift(
+          ctx,
+          gift.x,
+          gift.y,
+          gift.width,
+          gift.height,
+          gift.color,
+          gift.ribbonColor
+        );
+      });
+
+      // Рисуем елку с hover эффектами
+      drawChristmasTree(
+        ctx,
+        mousePositionRef.current,
+        ornamentPositionsRef.current
+      );
+
+      // Анимация пульсации звезды
+      starPulseRef.current += STAR_PULSE.speed;
+      const pulseScale =
+        STAR_PULSE.minScale +
+        ((STAR_PULSE.maxScale - STAR_PULSE.minScale) *
+          (Math.sin(starPulseRef.current * Math.PI * 2) + 1)) /
+          2;
+
+      drawStar(ctx, TREE_X, TREE_BASE_Y - 104, 10, 5, pulseScale);
+
       updateRabbit(currentTime);
 
       animationId = requestAnimationFrame(animate);
@@ -591,6 +908,8 @@ const ChristmasScene: React.FC<ChristmasSceneProps> = ({
 
     return () => {
       window.removeEventListener("resize", resizeCanvas);
+      canvas.removeEventListener("mousemove", handleMouseMove);
+      canvas.removeEventListener("mouseleave", handleMouseLeave);
       cancelAnimationFrame(animationId);
     };
   }, [rabbitInterval]);
